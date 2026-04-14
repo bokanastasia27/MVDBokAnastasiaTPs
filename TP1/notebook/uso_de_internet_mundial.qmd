@@ -1,10 +1,16 @@
+
+En primer lugar abr las librerias tidyverse, janitor (para poder usar clean_names) y here (para simplificar las rutas de los archivos)
+
 ```{r}
 library(tidyverse)
-library(janitor) #para poder utilizar clean_names
-library(here) #para simplificar las rutas de los archivos 
+library(janitor) 
+library(here) 
+```
+1. Creo una funcion para abrir y normalizar las bbdd 
+al hacer un primer acercamiento a las bbdd, veo que tienen lineas arriba que no son necesarias en la tabla. La funcion abre la bbdd en formato tabla y se saltea las primeras cuatro lineas
+2. Abro la base internet con las funcion, y luego utilizo clean_names para que las variables tengan los mismos nombres que las de metadata. Utilizo here:here para establecer rutas relativas y poder trabajar con este archivo en distintas computadoras, evitando tener rutas absolutas. 
+```{r}
 
-#1. funcion para abrir y normalizar las bbdd 
-#al analizar las bbdd, veo que tienen lineas arriba que no son necesarias en la tabla. La funcion abre la bbdd en formato tabla y se saltea las primeras cuatro lineas 
 cargar_datos <- function(ruta) {
   datos <- read.csv(ruta, skip = 4) 
   print(names(datos))
@@ -16,10 +22,11 @@ internet <- cargar_datos(here::here("TP1", "data", "internet_users_world_wide.cs
 internet <- internet %>%
   janitor::clean_names()
 head(internet) 
+```
 
+3. abro la bbdd metadata, identifico que hay mas lineas vacias que para la bbdd anterior, por lo tanto no utilizo la funcion. Borro las 10 primeras lineas, y abro la bbdd con read_csv. utilizo clean_names para usar los mismos nombres de las variables con las de la bbdd internet. Utilizo here:here para establecer rutas relativas y poder trabajar con este archivo en distintas computadoras, evitando tener rutas absolutas. 
+```{r}
 readLines(here::here("TP1", "data", "metadata_countries_internet_users.csv"), n = 10)
-#al intentar abrir la bbdd metadata, identifico que 
-#hay lineas vacias o con chunks de texto entre medio de los #nombres de las columnas y los datos. borro esas filas 
 
 metadata <- readr::read_csv(
   here::here("TP1", "data", "metadata_countries_internet_users.csv"),
@@ -27,34 +34,43 @@ metadata <- readr::read_csv(
 )
 names(metadata)
 metadata <- metadata %>%
-  janitor::clean_names() #hago un clean_names en ambas tablas para que todas las variables tengan el mismo nombre, que sera util para luego hacer el join y el analisis 
+  janitor::clean_names() 
+```
 
-
-#cambiar de formato wide a long 
+4. cambio de formato wide a long: los años pasan a ser filas, y para cada año se presenta un total de usuarios de internet para cada país como observacion 
+```{r}
 internet_long <- internet %>%
   pivot_longer(
-    cols = -c("country_name", "country_code", "indicator_name", "indicator_code"), #utiliza las columnas no identificadas 
-    names_to = "year", #paso anios a filas, crea una columna llamada year 
-    values_to = "tot_internet_users" # crea una columna que representa las observaciones de uso de internet para cada anio
+    cols = -c("country_name", "country_code", "indicator_name", "indicator_code"), 
+    names_to = "year", 
+    values_to = "tot_internet_users"
   )
+```
 
+5. limpio internet_long para el posterior analisis removiendo NAs y columnas vacias. identifique que hay una columna vacia a la que R le asigna el nombre '...6' la elimino.  identifico que para este trabajo las columnas importantes son 'Country code', 'region' e 'income group'. eliminio NAs de solo esas columnas para que no interfieran en el posterior analisis 
+```{r}
 #sacar NAs 
 internet_long <- internet_long %>%
   drop_na(tot_internet_users)
 
-names(metadata)  #identifique que hay una columna vacia a la que R le asigna el nombre '...6' la elimino 
+names(metadata) 
 metadata <- metadata %>%
   select(where(~ !all(is.na(.))))
-#identifico que para este trabajo las columnas importantes son 'Country code', 'region' e 'income group'. eliminio NAs de solo esas columnas para que no interfieran en el posterior analisis 
-metadata <- metadata %>%
-  drop_na(Region, IncomeGroup)
 
-#para hacer el left join tomo 'country_code" como la variable comun entre ambas tablas
+metadata <- metadata %>%
+  drop_na(region, income_group)
+```
+
+6. para hacer el left join tomo 'country_code" como la variable comun entre ambas tablas
+```{r}
 
 internet_metadata <- internet_long %>%
   left_join(metadata, by = "country_code")
+```
 
-#agregacion datos: buscamos presentar una tabla donde cada anio sea una fila y por cada nivel de ingreso se muestre un promedio anual de acceso a internet 
+7. agregacion datos y display final: buscamos presentar una tabla donde cada año desde el 2013 hasta el 2023 sea una fila y por cada nivel de ingreso se muestre un promedio anual de acceso a internet. primero se calcula los promedios de uso de internet anuales. Luego vuelvo a presentar la tabla en formato wide, donde los nombres de las columnas son los niveles de ingreso, las filas son los años y las observaciones son los promedios anuales de uso de internet. 
+```{r}
+
 agregacion <- internet_metadata %>%
   group_by(year, income_group) %>%
   summarise(
@@ -63,9 +79,9 @@ agregacion <- internet_metadata %>%
   )
 
 agregacion <- agregacion %>%
-  pivot_wider(   #lo presento en formato wide 
-    names_from = income_group, #los nombres de las columnas son los niveles de ingreso 
-    values_from = avg_internet #las observaciones son para los promedios calculados 
+  pivot_wider(   
+    names_from = income_group, 
+    values_from = avg_internet 
   )
 agregacion <- agregacion %>%
   select(
@@ -77,18 +93,25 @@ agregacion <- agregacion %>%
   ) # se ordena de menor a mayor
 
 agregacion <- agregacion %>%
-  mutate(year = as.numeric(sub("^x", "", year))) #porque los anios estaban puestos con dos X en frente, que visualmente es poco claro, se lo modifica a numero 
+  mutate(year = as.numeric(sub("^x", "", year))) %>%
+  filter(year >= 2013 & year <= 2023)
+
 agregacion <- agregacion %>%
   mutate(
     indicator_name = 'Proporcion de la poblacion que usa internet'
   )
+```
 
-#para guardar la tabla en output 
+
+finalmente exporto la tabla creando un .csv dentro de la carpeta output
+```{r}
+ 
 readr::write_csv(
   agregacion,
   here::here("TP1", "output", "resultado_hipotesis.csv")
 )
 ```
 
-```         
-```
+
+
+
