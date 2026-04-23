@@ -7,6 +7,7 @@ library(here)
 library(tidyverse)
 library(udpipe)  #Paquete de NLP
 library(stopwords)  #Paquete de NLP
+library(stringi)
 
 # Crear carpeta de salida si no existe
 output_dir <- here("TP2", "output")
@@ -28,6 +29,7 @@ tabla_noticias <- readRDS(lectura_datos)
 tabla_noticias_limpia <- tabla_noticias %>%
   mutate(
     cuerpo_limpio = cuerpo %>%
+      stringi::stri_trans_general("Latin-ASCII") %>%  #saca tildes 
       str_to_lower() %>%
       str_replace_all("[[:punct:]]", " ") %>%   # saca puntuación
       str_replace_all("[[:digit:]]", " ") %>%   # saca números
@@ -76,7 +78,7 @@ processed_text <- anotado_filtrado %>%
   select(doc_id, lemma)
 
 output_texto_procesado <- here("TP2", "output", "processed_text.rds")
-saveRDS(processed_text, output_path)
+saveRDS(processed_text, output_texto_procesado)
 
 message("Archivo guardado en: ", output_texto_procesado)
 
