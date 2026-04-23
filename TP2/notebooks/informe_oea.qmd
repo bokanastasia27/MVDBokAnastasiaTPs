@@ -1,0 +1,9 @@
+
+```{r}
+library(here)
+source(here("TP2/scripts/scraping_oea.R"))
+source(here("TP2/scripts/processing.R"))
+source(here("TP2/scripts/metrics_figures.R"))
+
+```
+
