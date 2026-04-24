@@ -1,17 +1,20 @@
 ##extraer, ordenar y limpiar el texto resultante del web scraping
+message('processing')
+
 install.packages('udpipe')
 install.packages('stopwords')
 
-message("processing")
+message("instalando librerias")
 library(here)
 library(tidyverse)
 library(udpipe)  #Paquete de NLP
 library(stopwords)  #Paquete de NLP
 library(stringi)
+message("librerias instaladas correctamente")
+
 
 # Crear carpeta de salida si no existe
 output_dir <- here("TP2", "output")
-
 if (!dir.exists(output_dir)) {
   dir.create(output_dir, recursive = TRUE)
   message("Se creó la carpeta: ", output_dir)
@@ -23,7 +26,7 @@ if (!dir.exists(output_dir)) {
 lectura_datos <- here("TP2", "data", "tabla_oea.rds")
 message("Leyendo archivo: ", lectura_datos)
 tabla_noticias <- readRDS(lectura_datos)
-
+message('datos del scraping leidos')
 
 ##limpieza inicial: saca caracteres especiales, signos de puntuación y espacios
 tabla_noticias_limpia <- tabla_noticias %>%
@@ -36,13 +39,7 @@ tabla_noticias_limpia <- tabla_noticias %>%
       str_replace_all("[^[:alpha:]\\s]", " ") %>% # saca caracteres especiales
       str_squish()                              # ordena espacios
   )
-
-
-
-#para ver si quedo bien
-tabla_noticias_limpia %>%
-  select(cuerpo, cuerpo_limpio) %>%
-  slice(1)
+message('limpieza inicial concluida')
 
 
 #segunda limpieza, lematizacion en español 
@@ -58,19 +55,19 @@ anotado_df <- udpipe(
   ),
   object = modelo_path
 )
-
+message('lematizacion en esp. concluida')
 
 
 #3, me quedo solo con adjetivos verbos y sustantivos, y saco stopwords 
 # Stopwords en español
 stop_esp <- stopwords("es")
-
+message('stopwords removidos')
 anotado_filtrado <- anotado_df %>%
   filter(upos %in% c("NOUN", "VERB", "ADJ")) %>%
   mutate(lemma = str_to_lower(lemma)) %>%
   filter(!lemma %in% stop_esp) %>%
   filter(!is.na(lemma), lemma != "")
-
+message('tabla solo contiene verbos, adjetivos y sustantivos')
 
 
 #guardado, solo doc id y filas de lemas
