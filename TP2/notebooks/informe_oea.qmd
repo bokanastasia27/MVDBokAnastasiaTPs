@@ -1,3 +1,9 @@
+---
+title: "Informe - recuento de terminos de la OEA"
+format: html
+author: "Anastasia Bok"
+---
+
 El objetivo del presente trabajo es analizar la frecuencia de ciertas palabras dentro de los comunicados de la OEA para comprender los temas de mayor relevancia en el año 2026. Se utilizan técnicas de web scrapping, procesamiento de lenguaje natural y recuento de frecuencia de palabras.
 
 El proyecto está organizado en carpetas para separar los datos, los scripts, los resultados y el informe. La carpeta `TP2/data` contiene los archivos generados durante el scraping, mientras que `TP2/output` contiene los resultados finales del procesamiento y la figura producida. Los scripts se encuentran en `TP2/scripts`.
