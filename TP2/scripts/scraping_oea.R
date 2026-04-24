@@ -14,7 +14,7 @@ pagina <- read_html(url)
 message("pagina leida")
 
 links <- pagina %>%
-  html_elements(".itemmenulink") %>%
+  html_elements(".itemmenulink") %>%  #producto del selector gadget 
   html_attr("href")
 head(links)
 message("links extraidos de la pagina")
@@ -22,6 +22,7 @@ message("links extraidos de la pagina")
 base_url <- "https://www.oas.org/es/centro_noticias/"
 message("base url definida")
 
+#creo una funcion apra extraer los links dentro de cada mes 
 extraer_links_mes <- function(url_mes) {
   pagina <- read_html(url_mes)
   links <- pagina %>%
@@ -30,7 +31,7 @@ extraer_links_mes <- function(url_mes) {
   base_url <- "https://www.oas.org/es/centro_noticias/"
   links_completos <- paste0(base_url, links)
   links_filtrados <- links_completos %>%
-    str_subset("comunicado_prensa")
+    str_subset("comunicado_prensa")  #solo quiero guardar los comunicados de prensa
   return(links_filtrados)
 }
 message("funcion extraer_links_mes creada")
@@ -50,7 +51,7 @@ message('links extraidos')
 message("links de todos los meses extraidos")
 
 
-#funcion 
+#funcion para armar la tabla final  
 extraer_noticia <- function(url) {
   pagina <- read_html(url)
   titulo <- pagina %>%
@@ -62,8 +63,8 @@ extraer_noticia <- function(url) {
     html_elements("p") %>%
     html_text() %>%
     paste(collapse = " ")
-  id_noticia <- url
-  tibble(
+  id_noticia <- url  
+  tibble(         #cc
     id = id_noticia,
     titulo = titulo,
     cuerpo = cuerpo
@@ -78,20 +79,23 @@ message("tabla guardada como rds")
 
 
 #html
-#primero busco fechas 
-pagina_noticia %>%
-  html_elements(".headlinelink") %>%
-  html_text()
-
-
 guardar_html <- function(url) {
   pagina <- read_html(url)
-  nombre <- url %>%
+  texto <- pagina %>% #extrae todo el texto
+    html_text() 
+  fecha <- str_extract(texto, "\\d{1,2} de [a-z]+ de 2026")  #buscar fecha
+  fecha_limpia <- fecha %>%     #convierte a formato más limpio
+    str_replace_all(" de ", "_") %>%
+    str_to_lower()
+  nombre <- url %>%      #nombre del archivo
     str_extract("sCodigo=.*") %>%
     str_replace("/", "_")
-  write_html(pagina, paste0("TP2/data/", nombre, ".html"))
+  write_html(
+    pagina,
+    paste0("TP2/data/", fecha_limpia, "_", nombre, ".html")
+  )
 }
 
 walk(links_todos, guardar_html)
-  #FALTA TERMINAR ESTA PARTE Y SUMAR MESSAGES 
+message("html guardados con fecha")
 
