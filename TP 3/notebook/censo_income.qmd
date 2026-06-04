@@ -1,6 +1,6 @@
 ```{r}
 ---
-title: "Trabajo Práctico 3: Regresión logística"
+title: "TP3: Regresión logística"
 author: "Anastasia Bok"
 format:
   html:
@@ -28,5 +28,133 @@ pacman::p_load(
   kableExtra    # tablas más estéticas
 )
 
+```
+
+Luego hacemos un primer acercamiento a los datos, abirmos la base y vemos como estan armadas las variables 
+
+```{r}
+censo <- read_csv(
+  here("TP 3", "data", "adult_census_USA.csv")
+)
+```
+
+Ahora factorizamos la variable income para poder extraer el salario "<=50K" como primer nivel y categoría de referencia en la regresión logística. 
+
+```{r}
+censo <- censo %>%
+  mutate(
+    income = factor(
+      income,
+      levels = c("<=50K", ">50K")
+    )
+  )
+
+levels(censo$income)
+```
+Este trabajo buscará analizar el efecto del sexo de la persona en la probabilidad de que tenga ingresos mayores a 50k, controlando e interactuando con otras variables  . En primer lugar extraemos las variables relevantes para el modelo. Seleccionamos las variables y luego vemos como están codificadas y si hay que hacerles modificaciones a las variables categoricas para poder incluirlas en el modelo. 
+
+```{r}
+predictores <- censo %>%
+  select(
+    income,
+    sex,
+    age,
+    education,
+    marital_status,
+    race,
+    workclass, 
+    hours_per_week
+  )
+glimpse(predictores) #para ver bien la composicion de las variables y que habria que cambiar
+
+# Recodificación de variables categoricas 
+predictores <- predictores %>%
+  mutate(
+    # Estado civil
+    marital_status = case_when(
+      marital_status %in% c("Married-civ-spouse", "Married-AF-spouse") ~ "Casado",
+      TRUE ~ "Soltero"
+    ),
+    # Educación
+    education = case_when(
+      education %in% c(
+        "Preschool", "1st-4th", "5th-6th", "7th-8th",
+        "9th", "10th", "11th", "12th"
+      ) ~ "Educ. Primaria/intermedia",
+      education == "HS-grad" ~ "Educ. Secundaria",
+      education %in% c(
+        "Some-college",
+        "Assoc-acdm",
+        "Assoc-voc"
+      ) ~ "Educ. Terciaria",
+      education == "Bachelors" ~ "Grado Completo",
+      education %in% c(
+        "Masters",
+        "Prof-school",
+        "Doctorate"
+      ) ~ "Post Grad."
+    ),
+    # etnia
+    race = case_when(
+      race == "White" ~ "Blanco",
+      TRUE ~ "No Blanco"     #al hacer un acercamiento a los datos se observan muy pocas personas no blancas, por lo tanto se agrupan las observaciones.    
+    ),
+    # Tipo de empleo
+    workclass = case_when(
+      workclass == "Private" ~ "Sector Privado",
+      workclass %in% c(
+        "Federal-gov",
+        "Local-gov",
+        "State-gov"
+      ) ~ "Sector Publico",
+      workclass %in% c(
+        "Self-emp-inc",
+        "Self-emp-not-inc"
+      ) ~ "Independiente",
+      
+      TRUE ~ NA_character_
+    )
+    
+  )
+predictores <- predictores %>%
+  filter(!is.na(workclass))
+
+```
+Antes de armar el modelo, se delimita la categoria de referencia para cada predictor y se ordena por niveles a las variables categoricas 
+
+```{r}
+predictores <- predictores %>%
+  mutate(
+    sex = factor(
+      sex,
+      levels = c("Female", "Male")       #categoria de ref. es FEMALE
+    ),
+    marital_status = factor(
+      marital_status,
+      levels = c("Soltero", "Casado")    #cat. de referencia es SOLTERO  
+    ),
+    education = factor(
+      education,
+      levels = c(
+        "Educ. Secundaria",  #cat. de referencia es EDUC.SECUNDARIA 
+        "Educ. Primaria/intermedia",
+        "Educ. Terciaria",
+        "Grado Completo",
+        "Post Grad."   
+      )
+    ),
+    race = factor(
+      race,
+      levels = c("Blanco", "No Blanco") #cat. de referencia es BLANCO
+    ),
+    workclass = factor(
+      workclass,
+      levels = c(
+        "Sector Privado",      #cat. de referencia es SECTOR PRIVADO
+        "Sector Publico",
+        "Independiente"
+      )
+    )
+  )
 ```
 
