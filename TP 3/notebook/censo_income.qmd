@@ -1,0 +1,32 @@
+```{r}
+---
+title: "Trabajo Práctico 3: Regresión logística"
+author: "Anastasia Bok"
+format:
+  html:
+    toc: true
+    theme: cosmo
+editor: visual
+---
+```
+
+Primero se cargan las librerias necesarias.
+```{r}
+if (!require("pacman")) install.packages("pacman")
+
+pacman::p_load(
+  tidyverse,    # manipulación y gráficos
+  here,         # rutas relativas
+  janitor,      # limpieza de nombres
+  broom,        # tablas de resultados de modelos
+  marginaleffects, # efectos marginales promedio (AME)
+  ggplot2,      # gráficos
+  scales,       # escalas para gráficos
+  performance,  # métricas de modelos
+  patchwork,    # combinar gráficos
+  knitr,        # tablas
+  kableExtra    # tablas más estéticas
+)
+
+```
+
