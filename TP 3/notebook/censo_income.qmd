@@ -1,4 +1,4 @@
-```{r}
+
 ---
 title: "TP3: Regresión logística"
 author: "Anastasia Bok"
@@ -9,6 +9,8 @@ format:
 editor: visual
 ---
 ```
+
+El propósito del presente trabajo es estudiar el efecto de distintas variables en el ingreso, haciendo especial énfasis en la cuestión de la brecha de género; el sexo de la persona determina la propabilidad de que reciba mayores ingresos? 
 
 Primero se cargan las librerias necesarias.
 ```{r}
@@ -27,6 +29,7 @@ pacman::p_load(
   knitr,        # tablas
   kableExtra    # tablas más estéticas
 )
+message('librerias cargadas')
 
 ```
 
@@ -50,6 +53,7 @@ censo <- censo %>%
   )
 
 levels(censo$income)
+message('variable objetivo cargada')
 ```
 Este trabajo buscará analizar el efecto del sexo de la persona en la probabilidad de que tenga ingresos mayores a 50k, controlando e interactuando con otras variables  . En primer lugar extraemos las variables relevantes para el modelo. Seleccionamos las variables y luego vemos como están codificadas y si hay que hacerles modificaciones a las variables categoricas para poder incluirlas en el modelo. 
 
@@ -65,7 +69,7 @@ datos <- censo %>%
     workclass, 
     hours_per_week
   )
-glimpse(predictores) #para ver bien la composicion de las variables y que habria que cambiar
+glimpse(datos) #para ver bien la composicion de las variables y que habria que cambiar
 
 # Recodificación de variables categoricas 
 datos <- datos %>%
@@ -119,6 +123,8 @@ datos <- datos %>%
 datos <- datos %>%
   filter(!is.na(workclass))
 
+message('variables predictoras cargadas')
+
 ```
 
 Antes de armar el modelo, se delimita la categoria de referencia para cada predictor y se ordena por niveles a las variables categoricas 
@@ -163,7 +169,7 @@ Finalmente vamos a verificar que los datos de la variable objetivo esten balance
 
 table(datos$income)   
 prop.table(table(datos$income))
-
+message('variable objetivo correctamente balanceada')
 ```
 Podemos observar una distribucion balanceada de observaciones dentro de los clusters de ingreso, un poco mas de la mitad gana menos de 50k.
 
@@ -174,6 +180,7 @@ PARTE 1: Analisis exploratorio y decisiones de transformacion
 Primer acercamiento: sobre la relacion entre sexo e ingreso 
 
 ```{r}
+message('creando grafico ingresos - sexo')
 datos %>%
   count(sex, income) %>%
   group_by(sex) %>%
@@ -196,6 +203,7 @@ datos %>%
 ```
 Segundo acercamiento: sobre la relacion del nivel educativo y el ingreso 
 ```{r}
+message('creando grafico ingresos - nivel educativo')
 datos %>%
   count(education, income) %>%
   group_by(education) %>%
@@ -220,6 +228,7 @@ Se observa que a mayor nivel educativo, mayor la proporcion de personas con sala
 
 Analizamos la relacion entre nivel educativo y sexo: 
 ```{r}
+message('creando grafico nivel educativo - sexo')
 datos %>%
   count(sex, education) %>%
   group_by(sex) %>%
@@ -248,6 +257,7 @@ En conexion a lo visto en los dos graficos anteriores: ser hombre parece asociar
 
 Analizamos la relacion entre horas trabajadas y salario: 
 ```{r}
+message('creando grafico ingresos - horas trabajadas semanales')
 ggplot(
   datos,
   aes(
@@ -265,10 +275,14 @@ ggplot(
   ) +
   theme_minimal()
 ```
+Se observa que la media para ambos es 40 horas, pero se destaca que para el 50% de las observaciones de quienes ganan más que 50K rondan entre las 40 y las 50 horas semanales, mientras que quienes ganan menos que 50k el 50% de las observaciones se encuentran más concentradas en 40 horas. 
+
+
 
 Otra intuicion sobre la explicacion de la brecha salarial entre hombres y mujeres es que los hombres trabajan mas horas semanales mientras que las mujeres, tradicionalmente mas ligadas a tareas de cuidado de la familia, cumplen menos horas semanales y por ende tienen menores salarios. Buscamos explorar la relacion entre horas semanales trabajadas y sexo: 
 
 ```{r}
+message('creando grafico horas trabajadas semanales - sexo')
 ggplot(
   datos,
   aes(
@@ -289,9 +303,12 @@ ggplot(
   ) +
   theme_minimal()
 ```
+Este grafico demuestra que la media de horas trabajadas semanalmente para hombres y mujeres es 40 horas, no obstante, se observa que el 50% de las observaciones para las mujeres ronda entre las 40 y las 35 horas semanales mientras que para los hombres estos datos se encuentran ente 40 y 50 horas semanales. Se observan diferencias poco significativas en las horas según género. 
+
 
 Finalmente vamos a observar el efecto del tipo de trabajo en el salario: 
 ```{r}
+message('creando grafico ingresos - tipo de trabajo')
 datos %>%
   count(workclass, income) %>%
   group_by(workclass) %>%
@@ -343,6 +360,7 @@ modelo_1 <- glm(
   data = datos,
   family = binomial
 )
+message('modelo 1 creado, sin interaccion')
 
 modelo_2 <- glm(
   income ~ sex +
@@ -355,6 +373,7 @@ modelo_2 <- glm(
   data = datos,
   family = binomial
 )
+message('modelo 2 creado, con interaccion')
 
 summary(modelo_1)
 summary(modelo_2)
@@ -371,92 +390,181 @@ pseudo_r2_m1
 pseudo_r2_m2
 ```
 
-AME + grafico :
+AME :
 ```{r}
-ame_m2 <- avg_slopes(modelo_2)
-ame_m2
-as.data.frame(ame_m2)
-
-
-
-ame_df <- as.data.frame(ame_m2)
-names(ame_df)
-
-ame_df <- as.data.frame(ame_m2)
-
-ame_df$etiqueta <- ifelse(
-  ame_df$contrast == "dY/dX",
-  ame_df$term,
-  ame_df$contrast
+ame_estandar <- avg_slopes(
+  modelo_2,
+  variables = c(
+    "sex",
+    "workclass",
+    "age",
+    "education",
+    "marital_status",
+    "race",
+    "hours_per_week"
+  ),
+  slope = "dydx"
 )
 
-ggplot(
-  ame_df,
-  aes(
-    x = estimate,
-    y = reorder(etiqueta, estimate)
+message('creando dataframe con AME')
+ame_estandar |> 
+  select(term, contrast, estimate, conf.low, conf.high, p.value) |> 
+  
+  mutate(
+    estimate_pct = paste0(round(estimate * 100, 2), "%"),
+    conf.low = paste0(round(conf.low * 100, 2), "%"),
+    conf.high = paste0(round(conf.high * 100, 2), "%"),
+    
+    interpretacion = case_when(
+      estimate > 0 & p.value < 0.05 ~ "Aumenta prob. (Sig.)",
+      estimate < 0 & p.value < 0.05 ~ "Reduce prob. (Sig.)",
+      TRUE ~ "No significativo"
+    )
+  ) |> 
+  
+  select(
+    term,
+    contrast,
+    estimate_pct,
+    conf.low,
+    conf.high,
+    p.value,
+    interpretacion
+  ) |> 
+  
+  rename(
+    Predictor = term,
+    Contraste = contrast,
+    `Efecto (Prob)` = estimate_pct,
+    `IC Inferior` = conf.low,
+    `IC Superior` = conf.high,
+    `Valor p` = p.value,
+    Interpretación = interpretacion
+  ) |> 
+  
+  knitr::kable(
+    digits = 4,
+    caption = "Efectos Marginales Promedio (Cambio en Probabilidad)"
+  ) |> 
+  
+  kable_styling(
+    bootstrap_options = c("striped", "hover", "condensed", "responsive"),
+    full_width = FALSE,
+    position = "center"
+  ) |> 
+  
+  row_spec(
+    row = which(ame_estandar$p.value < 0.05),
+    bold = TRUE,
+    color = "black",
+    background = "#e6f2ff"
   )
-) +
-  geom_point(size = 3) +
-  geom_errorbarh(
-    aes(
-      xmin = conf.low,
-      xmax = conf.high
-    ),
-    height = 0.2
-  ) +
-  geom_vline(
-    xintercept = 0,
-    linetype = "dashed"
-  ) +
-  labs(
-    x = "Efecto marginal promedio",
-    y = "",
-    title = "Efectos Marginales Promedio del Modelo 2"
-  ) +
-  theme_minimal()
 ```
+Al observar el efecto marginal promedio, se aprecia que estar casado aumenta la propabilidad de ganar mayores ingresos en 40,7 puntos porcentuales respecto de los individuos solteros, manteniendo constantes las demás variables. Por otro lado, observamos que la educación tiene un efecto significativo sobre el ingreso; frente a la categoría de referencia que es haber completado estudios secundarios, tener una educación terciaria aumenta en 10,32 puntos porcentuales la probabilidad de tener ingresos más altos, mientras que tener un título de grado aumenta en aproximadamente 26,41 puntos porcentuales y finalmenete un posgrado aumenta en aproximadamente 35,19 puntos porcentuales. 
+Ser hombre se asocia con una probabilidad levemente más alta de obtener ingresos más altos, de 2,24 puntos porcentuales, si bien es significativo en base al P valor obtenido, en comparacion al estatus matrimonial y el nivel educativo presenta una probabilidad de aumento menor. Lo mismo ocurre para etnia, no ser blanco se asocia con una probabilidad de -2,87 puntos porcentuales en obtener mayores ingresos frente a la gente blanca, con una significancia estadística alta. 
+El sector parece no ser significativo por si solo, no se presentan cambios con significancia estadística. 
+
+
 Ahora calculamos los log odds:
 ```{r}
-or_df <- broom::tidy(
-  modelo_2,
-  conf.int = TRUE,
-  exponentiate = TRUE
-)
+# Forest plot de Odds Ratios del Modelo 2
+message('Creando forest plot con log odds')
+df_plot_or <- broom::tidy(modelo_2) %>%
+  filter(term != "(Intercept)") %>%
+  mutate(
+    # Intervalos en escala log-odds
+    lo_80 = estimate - qnorm(0.90) * std.error,
+    hi_80 = estimate + qnorm(0.90) * std.error,
+    lo_95 = estimate - qnorm(0.975) * std.error,
+    hi_95 = estimate + qnorm(0.975) * std.error,
+    lo_99 = estimate - qnorm(0.995) * std.error,
+    hi_99 = estimate + qnorm(0.995) * std.error,
 
-or_df
+    # Pasamos todo a Odds Ratios
+    across(
+      c(estimate, starts_with("lo_"), starts_with("hi_")),
+      exp
+    ),
 
-or_plot <- or_df |>
-  filter(term != "(Intercept)")
+    # Etiquetas limpias
+    term_clean = case_match(
+      term,
+      "sexMale" ~ "Sexo: Hombre vs Mujer",
+      "age" ~ "Edad",
+      "educationEduc. Primaria/intermedia" ~ "Educ. primaria/intermedia vs secundaria",
+      "educationEduc. Terciaria" ~ "Educ. terciaria vs secundaria",
+      "educationGrado Completo" ~ "Grado completo vs secundaria",
+      "educationPost Grad." ~ "Postgrado vs secundaria",
+      "workclassSector Publico" ~ "Sector público vs privado",
+      "workclassIndependiente" ~ "Independiente vs privado",
+      "marital_statusCasado" ~ "Casado vs soltero",
+      "raceNo Blanco" ~ "No blanco vs blanco",
+      "hours_per_week" ~ "Horas trabajadas por semana",
+      "sexMale:workclassSector Publico" ~ "Interacción: Hombre × sector público",
+      "sexMale:workclassIndependiente" ~ "Interacción: Hombre × independiente",
+      .default = term
+    )
+  )
 
 ggplot(
-  or_plot,
+  df_plot_or,
   aes(
-    x = estimate,
-    y = reorder(term, estimate)
+    y = reorder(term_clean, estimate),
+    x = estimate
   )
 ) +
-  geom_point(size = 3) +
-  geom_errorbarh(
-    aes(
-      xmin = conf.low,
-      xmax = conf.high
-    ),
-    height = .2
-  ) +
   geom_vline(
     xintercept = 1,
-    linetype = "dashed"
+    linetype = "dashed",
+    color = "gray40",
+    linewidth = 1
+  ) +
+  geom_linerange(
+    aes(xmin = lo_99, xmax = hi_99),
+    color = "#74ADD1",
+    linewidth = 0.6
+  ) +
+  geom_linerange(
+    aes(xmin = lo_95, xmax = hi_95),
+    color = "#4575B4",
+    linewidth = 1.2
+  ) +
+  geom_linerange(
+    aes(xmin = lo_80, xmax = hi_80),
+    color = "#313695",
+    linewidth = 2.2
+  ) +
+  geom_point(
+    color = "#D73027",
+    size = 2
   ) +
   scale_x_log10() +
   labs(
+    title = "Odds Ratios del Modelo 2",
+    subtitle = "Barras de error graduadas: 80% (gruesa), 95% (media), 99% (fina)",
     x = "Odds Ratio (escala logarítmica)",
-    y = "",
-    title = "Odds Ratios del Modelo 2"
+    y = NULL
   ) +
-  theme_minimal()
+  theme_minimal(base_size = 10) +
+  theme(
+    plot.title = element_text(face = "bold", size = 15),
+    panel.grid.minor = element_blank(),
+    panel.grid.major.y = element_blank(),
+    axis.text.y = element_text(face = "bold", size = 10),
+    axis.text.x = element_text(size = 10)
+  )
 
 ```
+Este grafico nos permite aceverar que el sexo si tiene un efecto en la probabilidad de pertenecer al grupo de mayores ingresos, por un 23%. Otros resultados que se destacan: los individuos no blancos presentan odds aproximadamente 18% menores de pertenecer al grupo de ingresos altos que los individuos blancos, y se sostiene la preponderancia de estar casado y tener un mayor nivel educativo en la probabilidad de tener mayores ingresos como fue visto en el dataframe con los efectos marginales promedio. 
+
+La interaccion incluida nos permite comprender que la brecha de genero esta fuertemente relacionada con el sector laboral. Los resultados muestran que, manteniendo constantes el resto de las variables incluidas en el modelo, los hombres presentan mayores chances de pertenecer al grupo de ingresos altos respecto de las mujeres (OR = 1,23). Sin embargo, el término de interacción correspondiente a Hombre × Independiente presenta un Odds Ratio menor a uno (OR = 0,57) y resulta estadísticamente significativo, indicando que el efecto positivo asociado al sexo masculino disminuye de manera significativa entre los trabajadores independientes en comparación con quienes se desempeñan en el sector privado, categoría de referencia.
+
+
+
+
+
+
+
 Comparacion de modelos con y sin interaccion: 
 ```{r}
 comparacion_modelos <- tibble(
