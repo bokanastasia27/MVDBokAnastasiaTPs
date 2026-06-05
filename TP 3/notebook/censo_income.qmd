@@ -54,7 +54,7 @@ levels(censo$income)
 Este trabajo buscará analizar el efecto del sexo de la persona en la probabilidad de que tenga ingresos mayores a 50k, controlando e interactuando con otras variables  . En primer lugar extraemos las variables relevantes para el modelo. Seleccionamos las variables y luego vemos como están codificadas y si hay que hacerles modificaciones a las variables categoricas para poder incluirlas en el modelo. 
 
 ```{r}
-predictores <- censo %>%
+datos <- censo %>%
   select(
     income,
     sex,
@@ -68,7 +68,7 @@ predictores <- censo %>%
 glimpse(predictores) #para ver bien la composicion de las variables y que habria que cambiar
 
 # Recodificación de variables categoricas 
-predictores <- predictores %>%
+datos <- datos %>%
   mutate(
     # Estado civil
     marital_status = case_when(
@@ -116,14 +116,15 @@ predictores <- predictores %>%
     )
     
   )
-predictores <- predictores %>%
+datos <- datos %>%
   filter(!is.na(workclass))
 
 ```
+
 Antes de armar el modelo, se delimita la categoria de referencia para cada predictor y se ordena por niveles a las variables categoricas 
 
 ```{r}
-predictores <- predictores %>%
+datos <- datos %>%
   mutate(
     sex = factor(
       sex,
@@ -157,4 +158,322 @@ predictores <- predictores %>%
     )
   )
 ```
+Finalmente vamos a verificar que los datos de la variable objetivo esten balanceados. 
+```{r}
+
+table(datos$income)   
+prop.table(table(datos$income))
+
+```
+Podemos observar una distribucion balanceada de observaciones dentro de los clusters de ingreso, un poco mas de la mitad gana menos de 50k.
+
+
+
+
+PARTE 1: Analisis exploratorio y decisiones de transformacion 
+Primer acercamiento: sobre la relacion entre sexo e ingreso 
+
+```{r}
+datos %>%
+  count(sex, income) %>%
+  group_by(sex) %>%
+  mutate(prop = n/sum(n)) %>%
+  ggplot(
+    aes(
+      x = sex,
+      y = prop,
+      fill = income
+    )
+  ) +
+  geom_col() +
+  scale_y_continuous(labels = scales::percent) +
+  labs(
+    x = "Sexo",
+    y = "Proporción",
+    fill = "Ingreso",
+    title = "Ingresos según sexo"
+  )
+```
+Segundo acercamiento: sobre la relacion del nivel educativo y el ingreso 
+```{r}
+datos %>%
+  count(education, income) %>%
+  group_by(education) %>%
+  mutate(prop = n/sum(n)) %>%
+  ggplot(
+    aes(
+      x = education,
+      y = prop,
+      fill = income
+    )
+  ) +
+  geom_col() +
+  scale_y_continuous(labels = scales::percent) +
+  labs(
+    x = "Nivel educativo",
+    y = "Proporción",
+    fill = "Ingreso",
+    title = "Ingresos según nivel educativo"
+  )
+```
+Se observa que a mayor nivel educativo, mayor la proporcion de personas con salarios mas altos.
+
+Analizamos la relacion entre nivel educativo y sexo: 
+```{r}
+datos %>%
+  count(sex, education) %>%
+  group_by(sex) %>%
+  mutate(prop = n / sum(n)) %>%
+  ggplot(
+    aes(
+      x = sex,
+      y = prop,
+      fill = education
+    )
+  ) +
+  geom_col() +
+  scale_y_continuous(
+    labels = scales::percent
+  ) +
+  labs(
+    x = "Sexo",
+    y = "Proporción",
+    fill = "Nivel educativo",
+    title = "Distribución del nivel educativo según sexo"
+  ) +
+  theme_minimal()
+```
+Muy parejo, aunque se osberva que hay una mayor proporcion de hombres con nivel educativo mas alto. 
+En conexion a lo visto en los dos graficos anteriores: ser hombre parece asociarse con un mayor nivel educativo y un mayor salario. 
+
+Analizamos la relacion entre horas trabajadas y salario: 
+```{r}
+ggplot(
+  datos,
+  aes(
+    x = income,
+    y = hours_per_week,
+    fill = income
+  )
+) +
+  geom_boxplot() +
+  labs(
+    x = "Ingreso",
+    y = "Horas trabajadas por semana",
+    fill = "Ingreso",
+    title = "Horas trabajadas según nivel de ingresos"
+  ) +
+  theme_minimal()
+```
+
+Otra intuicion sobre la explicacion de la brecha salarial entre hombres y mujeres es que los hombres trabajan mas horas semanales mientras que las mujeres, tradicionalmente mas ligadas a tareas de cuidado de la familia, cumplen menos horas semanales y por ende tienen menores salarios. Buscamos explorar la relacion entre horas semanales trabajadas y sexo: 
+
+```{r}
+ggplot(
+  datos,
+  aes(
+    x = sex,
+    y = hours_per_week,
+    fill = sex
+  )
+) +
+  geom_violin(alpha = .5) +
+  geom_boxplot(
+    width = .15,
+    alpha = .8
+  ) +
+  labs(
+    x = "Sexo",
+    y = "Horas trabajadas por semana",
+    title = "Distribución de horas trabajadas según sexo"
+  ) +
+  theme_minimal()
+```
+
+Finalmente vamos a observar el efecto del tipo de trabajo en el salario: 
+```{r}
+datos %>%
+  count(workclass, income) %>%
+  group_by(workclass) %>%
+  mutate(prop = n / sum(n)) %>%
+  ggplot(
+    aes(
+      x = workclass,
+      y = prop,
+      fill = income
+    )
+  ) +
+  geom_col() +
+  scale_fill_manual(
+    values = c(
+      "<=50K" = "#D55E5E",
+      ">50K" = "#4C97D8"
+    )
+  ) +
+  scale_y_continuous(
+    labels = scales::percent
+  ) +
+  labs(
+    x = "Tipo de empleo",
+    y = "Proporción",
+    fill = "Ingreso",
+    title = "Nivel de ingresos según tipo de empleo"
+  ) +
+  theme_minimal()
+```
+
+
+En base a las visualizaciones llevadas a cabo, se analizara el efecto del sexo, el estado civil, la etnia, la edad,  la cantidad de horas trabajadas, el nivel educativo y el tipo de empleo en el salario. 
+Se hara especial enfasis en la cuestion de la brecha del salario por genero, y se incluira una interaccion entre tipo de empleo y genero para comprender si los por un mismo trabajo varia el sueldo segun el sexo de la persona. 
+
+
+2. Regresiones logisticas con y sin termino interactivo: 
+Regresion sin interaccion: 
+Categorias de referencia: Se estableció a las mujeres como categoría de referencia para la variable sexo. Para estado civil se eligió la categoría "Soltero". En educación se utilizó "Educación Secundaria" como referencia por tratarse de una categoría intermedia y numerosa dentro de la muestra. Para etnia se seleccionó "Blanco" y para tipo de empleo "Sector Privado", dado que constituyen las categorías más frecuentes observadas en los datos.
+
+```{r}
+modelo_1 <- glm(
+  income ~ sex +
+    age +
+    education +
+    marital_status +
+    race +
+    workclass +
+    hours_per_week,
+  data = datos,
+  family = binomial
+)
+
+modelo_2 <- glm(
+  income ~ sex +
+    age +
+    education + sex*workclass +
+    marital_status +
+    race +
+    workclass +
+    hours_per_week,
+  data = datos,
+  family = binomial
+)
+
+summary(modelo_1)
+summary(modelo_2)
+
+pseudo_r2_m1 <- 1 -
+  (modelo_1$deviance /
+     modelo_1$null.deviance)
+
+pseudo_r2_m2 <- 1 -
+  (modelo_2$deviance /
+     modelo_2$null.deviance)
+
+pseudo_r2_m1
+pseudo_r2_m2
+```
+
+AME + grafico :
+```{r}
+ame_m2 <- avg_slopes(modelo_2)
+ame_m2
+as.data.frame(ame_m2)
+
+
+
+ame_df <- as.data.frame(ame_m2)
+names(ame_df)
+
+ame_df <- as.data.frame(ame_m2)
+
+ame_df$etiqueta <- ifelse(
+  ame_df$contrast == "dY/dX",
+  ame_df$term,
+  ame_df$contrast
+)
+
+ggplot(
+  ame_df,
+  aes(
+    x = estimate,
+    y = reorder(etiqueta, estimate)
+  )
+) +
+  geom_point(size = 3) +
+  geom_errorbarh(
+    aes(
+      xmin = conf.low,
+      xmax = conf.high
+    ),
+    height = 0.2
+  ) +
+  geom_vline(
+    xintercept = 0,
+    linetype = "dashed"
+  ) +
+  labs(
+    x = "Efecto marginal promedio",
+    y = "",
+    title = "Efectos Marginales Promedio del Modelo 2"
+  ) +
+  theme_minimal()
+```
+Ahora calculamos los log odds:
+```{r}
+or_df <- broom::tidy(
+  modelo_2,
+  conf.int = TRUE,
+  exponentiate = TRUE
+)
+
+or_df
+
+or_plot <- or_df |>
+  filter(term != "(Intercept)")
+
+ggplot(
+  or_plot,
+  aes(
+    x = estimate,
+    y = reorder(term, estimate)
+  )
+) +
+  geom_point(size = 3) +
+  geom_errorbarh(
+    aes(
+      xmin = conf.low,
+      xmax = conf.high
+    ),
+    height = .2
+  ) +
+  geom_vline(
+    xintercept = 1,
+    linetype = "dashed"
+  ) +
+  scale_x_log10() +
+  labs(
+    x = "Odds Ratio (escala logarítmica)",
+    y = "",
+    title = "Odds Ratios del Modelo 2"
+  ) +
+  theme_minimal()
+
+```
+Comparacion de modelos con y sin interaccion: 
+```{r}
+comparacion_modelos <- tibble(
+  Modelo = c("Modelo 1", "Modelo 2"),
+  AIC = c(
+    AIC(modelo_1),
+    AIC(modelo_2)
+  ),
+  Pseudo_R2 = c(
+    pseudo_r2_m1,
+    pseudo_r2_m2
+  )
+)
+
+comparacion_modelos
+```
+La comparación entre modelos muestra que la incorporación de la interacción entre sexo y tipo de empleo mejora el ajuste del modelo. El Modelo 2 presenta un menor valor de AIC (14124 frente a 14133) y un pseudo-R² ligeramente superior (0.3538 frente a 0.3533). Si bien la mejora en el pseudo-R² es moderada, la reducción del AIC sugiere que la mayor complejidad del modelo se encuentra justificada por una mejor capacidad explicativa. Por este motivo, el Modelo 2 es seleccionado como especificación final para el análisis. Asimismo, uno de los términos de interacción (Hombre × Independiente) resulta estadísticamente significativo, sugiriendo que el efecto del sexo sobre los ingresos varía según el tipo de empleo. En consecuencia, se considera que la inclusión de la interacción aporta información relevante y mejora el desempeño general del modelo, por lo que el Modelo 2 es seleccionado como especificación final.
+
+
 
