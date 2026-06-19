@@ -1,4 +1,3 @@
-
 ---
 title: "TP3: Regresión logística"
 author: "Anastasia Bok"
@@ -7,12 +6,14 @@ format:
     toc: true
     theme: cosmo
 editor: visual
+  markdown: 
+    wrap: sentence
 ---
-```
 
-El propósito del presente trabajo es estudiar el efecto de distintas variables en el ingreso, haciendo especial énfasis en la cuestión de la brecha de género; el sexo de la persona determina la propabilidad de que reciba mayores ingresos? 
+El propósito del presente trabajo es estudiar el efecto de distintas variables en el ingreso, haciendo especial énfasis en la cuestión de la brecha de género; el sexo de la persona determina la propabilidad de que reciba mayores ingresos?
 
 Primero se cargan las librerias necesarias.
+
 ```{r}
 if (!require("pacman")) install.packages("pacman")
 
@@ -33,15 +34,16 @@ message('librerias cargadas')
 
 ```
 
-Luego hacemos un primer acercamiento a los datos, abirmos la base y vemos como estan armadas las variables 
+Luego hacemos un primer acercamiento a los datos, abirmos la base y vemos como estan armadas las variables
 
 ```{r}
+
 censo <- read_csv(
   here("TP 3", "data", "adult_census_USA.csv")
 )
 ```
 
-Ahora factorizamos la variable income para poder extraer el salario "<=50K" como primer nivel y categoría de referencia en la regresión logística. 
+Ahora factorizamos la variable income para poder extraer el salario "\<=50K" como primer nivel y categoría de referencia en la regresión logística.
 
 ```{r}
 censo <- censo %>%
@@ -55,9 +57,11 @@ censo <- censo %>%
 levels(censo$income)
 message('variable objetivo cargada')
 ```
-Este trabajo buscará analizar el efecto del sexo de la persona en la probabilidad de que tenga ingresos mayores a 50k, controlando e interactuando con otras variables  . En primer lugar extraemos las variables relevantes para el modelo. Seleccionamos las variables y luego vemos como están codificadas y si hay que hacerles modificaciones a las variables categoricas para poder incluirlas en el modelo. 
+
+Este trabajo buscará analizar el efecto del sexo de la persona en la probabilidad de que tenga ingresos mayores a 50k, controlando e interactuando con otras variables . En primer lugar extraemos las variables relevantes para el modelo. Seleccionamos las variables y luego vemos como están codificadas y si hay que hacerles modificaciones a las variables categoricas para poder incluirlas en el modelo.
 
 ```{r}
+
 datos <- censo %>%
   select(
     income,
@@ -127,7 +131,7 @@ message('variables predictoras cargadas')
 
 ```
 
-Antes de armar el modelo, se delimita la categoria de referencia para cada predictor y se ordena por niveles a las variables categoricas 
+Antes de armar el modelo, se delimita la categoria de referencia para cada predictor y se ordena por niveles a las variables categoricas
 
 ```{r}
 datos <- datos %>%
@@ -164,20 +168,19 @@ datos <- datos %>%
     )
   )
 ```
-Finalmente vamos a verificar que los datos de la variable objetivo esten balanceados. 
+
+Finalmente vamos a verificar que los datos de la variable objetivo esten balanceados.
+
 ```{r}
 
 table(datos$income)   
 prop.table(table(datos$income))
 message('variable objetivo correctamente balanceada')
 ```
+
 Podemos observar una distribucion balanceada de observaciones dentro de los clusters de ingreso, un poco mas de la mitad gana menos de 50k.
 
-
-
-
-PARTE 1: Analisis exploratorio y decisiones de transformacion 
-Primer acercamiento: sobre la relacion entre sexo e ingreso 
+PARTE 1: Analisis exploratorio y decisiones de transformacion Primer acercamiento: sobre la relacion entre sexo e ingreso
 
 ```{r}
 message('creando grafico ingresos - sexo')
@@ -201,7 +204,9 @@ datos %>%
     title = "Ingresos según sexo"
   )
 ```
-Segundo acercamiento: sobre la relacion del nivel educativo y el ingreso 
+
+Segundo acercamiento: sobre la relacion del nivel educativo y el ingreso
+
 ```{r}
 message('creando grafico ingresos - nivel educativo')
 datos %>%
@@ -224,9 +229,11 @@ datos %>%
     title = "Ingresos según nivel educativo"
   )
 ```
+
 Se observa que a mayor nivel educativo, mayor la proporcion de personas con salarios mas altos.
 
-Analizamos la relacion entre nivel educativo y sexo: 
+Analizamos la relacion entre nivel educativo y sexo:
+
 ```{r}
 message('creando grafico nivel educativo - sexo')
 datos %>%
@@ -252,10 +259,11 @@ datos %>%
   ) +
   theme_minimal()
 ```
-Muy parejo, aunque se osberva que hay una mayor proporcion de hombres con nivel educativo mas alto. 
-En conexion a lo visto en los dos graficos anteriores: ser hombre parece asociarse con un mayor nivel educativo y un mayor salario. 
 
-Analizamos la relacion entre horas trabajadas y salario: 
+Muy parejo, aunque se osberva que hay una mayor proporcion de hombres con nivel educativo mas alto. En conexion a lo visto en los dos graficos anteriores: ser hombre parece asociarse con un mayor nivel educativo y un mayor salario.
+
+Analizamos la relacion entre horas trabajadas y salario:
+
 ```{r}
 message('creando grafico ingresos - horas trabajadas semanales')
 ggplot(
@@ -275,38 +283,41 @@ ggplot(
   ) +
   theme_minimal()
 ```
-Se observa que la media para ambos es 40 horas, pero se destaca que para el 50% de las observaciones de quienes ganan más que 50K rondan entre las 40 y las 50 horas semanales, mientras que quienes ganan menos que 50k el 50% de las observaciones se encuentran más concentradas en 40 horas. 
 
+Se observa que la media para ambos es 40 horas, pero se destaca que para el 50% de las observaciones de quienes ganan más que 50K rondan entre las 40 y las 50 horas semanales, mientras que quienes ganan menos que 50k el 50% de las observaciones se encuentran más concentradas en 40 horas.
 
-
-Otra intuicion sobre la explicacion de la brecha salarial entre hombres y mujeres es que los hombres trabajan mas horas semanales mientras que las mujeres, tradicionalmente mas ligadas a tareas de cuidado de la familia, cumplen menos horas semanales y por ende tienen menores salarios. Buscamos explorar la relacion entre horas semanales trabajadas y sexo: 
+Otra intuicion sobre la explicacion de la brecha salarial entre hombres y mujeres es que los hombres trabajan mas horas semanales mientras que las mujeres, tradicionalmente mas ligadas a tareas de cuidado de la familia, cumplen menos horas semanales y por ende tienen menores salarios. Buscamos explorar la relacion entre horas semanales trabajadas y sexo:
 
 ```{r}
-message('creando grafico horas trabajadas semanales - sexo')
 ggplot(
   datos,
   aes(
-    x = sex,
-    y = hours_per_week,
-    fill = sex
+    x = hours_per_week,
+    fill = income
   )
 ) +
-  geom_violin(alpha = .5) +
-  geom_boxplot(
-    width = .15,
-    alpha = .8
+  geom_density(alpha = 0.45) +
+  facet_wrap(~ sex) +
+  scale_fill_manual(
+    values = c(
+      "<=50K" = "#D55E5E",
+      ">50K" = "#4C97D8"
+    )
   ) +
   labs(
-    x = "Sexo",
-    y = "Horas trabajadas por semana",
-    title = "Distribución de horas trabajadas según sexo"
+    x = "Horas trabajadas por semana",
+    y = "Densidad",
+    fill = "Ingreso",
+    title = "Distribución de horas trabajadas según ingreso, por sexo",
+    subtitle = "Comparación de la distribución de horas trabajadas para cada nivel de income, faceteada por sexo"
   ) +
   theme_minimal()
 ```
-Este grafico demuestra que la media de horas trabajadas semanalmente para hombres y mujeres es 40 horas, no obstante, se observa que el 50% de las observaciones para las mujeres ronda entre las 40 y las 35 horas semanales mientras que para los hombres estos datos se encuentran ente 40 y 50 horas semanales. Se observan diferencias poco significativas en las horas según género. 
 
+Este grafico demuestra que la mayor concentración de observaciones tanto para hombres como para mujeres ronda las 40 horas semanales, y para ambos se observa que las observaciones asociadas con un ingreso más alto tienden a superar las 40 horas semanales. Se observan diferencias poco significativas en las horas según género, por lo tanto esta interacción no resulta valiosa de explorar.
 
-Finalmente vamos a observar el efecto del tipo de trabajo en el salario: 
+Finalmente vamos a observar el efecto del tipo de trabajo en el salario:
+
 ```{r}
 message('creando grafico ingresos - tipo de trabajo')
 datos %>%
@@ -339,14 +350,9 @@ datos %>%
   theme_minimal()
 ```
 
+En base a las visualizaciones llevadas a cabo, se analizara el efecto del sexo, el estado civil, la etnia, la edad, la cantidad de horas trabajadas, el nivel educativo y el tipo de empleo en el salario. Se hara especial enfasis en la cuestion de la brecha del salario por genero, y se incluira una interaccion entre tipo de empleo y genero para comprender si los por un mismo trabajo varia el sueldo segun el sexo de la persona.
 
-En base a las visualizaciones llevadas a cabo, se analizara el efecto del sexo, el estado civil, la etnia, la edad,  la cantidad de horas trabajadas, el nivel educativo y el tipo de empleo en el salario. 
-Se hara especial enfasis en la cuestion de la brecha del salario por genero, y se incluira una interaccion entre tipo de empleo y genero para comprender si los por un mismo trabajo varia el sueldo segun el sexo de la persona. 
-
-
-2. Regresiones logisticas con y sin termino interactivo: 
-Regresion sin interaccion: 
-Categorias de referencia: Se estableció a las mujeres como categoría de referencia para la variable sexo. Para estado civil se eligió la categoría "Soltero". En educación se utilizó "Educación Secundaria" como referencia por tratarse de una categoría intermedia y numerosa dentro de la muestra. Para etnia se seleccionó "Blanco" y para tipo de empleo "Sector Privado", dado que constituyen las categorías más frecuentes observadas en los datos.
+2.  Regresiones logisticas con y sin termino interactivo: Regresion sin interaccion: Categorias de referencia: Se estableció a las mujeres como categoría de referencia para la variable sexo. Para estado civil se eligió la categoría "Soltero". En educación se utilizó "Educación Secundaria" como referencia por tratarse de una categoría intermedia y numerosa dentro de la muestra. Para etnia se seleccionó "Blanco" y para tipo de empleo "Sector Privado", dado que constituyen las categorías más frecuentes observadas en los datos.
 
 ```{r}
 modelo_1 <- glm(
@@ -391,6 +397,7 @@ pseudo_r2_m2
 ```
 
 AME :
+
 ```{r}
 ame_estandar <- avg_slopes(
   modelo_2,
@@ -460,12 +467,11 @@ ame_estandar |>
     background = "#e6f2ff"
   )
 ```
-Al observar el efecto marginal promedio, se aprecia que estar casado aumenta la propabilidad de ganar mayores ingresos en 40,7 puntos porcentuales respecto de los individuos solteros, manteniendo constantes las demás variables. Por otro lado, observamos que la educación tiene un efecto significativo sobre el ingreso; frente a la categoría de referencia que es haber completado estudios secundarios, tener una educación terciaria aumenta en 10,32 puntos porcentuales la probabilidad de tener ingresos más altos, mientras que tener un título de grado aumenta en aproximadamente 26,41 puntos porcentuales y finalmenete un posgrado aumenta en aproximadamente 35,19 puntos porcentuales. 
-Ser hombre se asocia con una probabilidad levemente más alta de obtener ingresos más altos, de 2,24 puntos porcentuales, si bien es significativo en base al P valor obtenido, en comparacion al estatus matrimonial y el nivel educativo presenta una probabilidad de aumento menor. Lo mismo ocurre para etnia, no ser blanco se asocia con una probabilidad de -2,87 puntos porcentuales en obtener mayores ingresos frente a la gente blanca, con una significancia estadística alta. 
-El sector parece no ser significativo por si solo, no se presentan cambios con significancia estadística. 
 
+Al observar el efecto marginal promedio, se aprecia que estar casado aumenta la propabilidad de ganar mayores ingresos en 40,7 puntos porcentuales respecto de los individuos solteros, manteniendo constantes las demás variables. Por otro lado, observamos que la educación tiene un efecto significativo sobre el ingreso; frente a la categoría de referencia que es haber completado estudios secundarios, tener una educación terciaria aumenta en 10,32 puntos porcentuales la probabilidad de tener ingresos más altos, mientras que tener un título de grado aumenta en aproximadamente 26,41 puntos porcentuales y finalmenete un posgrado aumenta en aproximadamente 35,19 puntos porcentuales. Ser hombre se asocia con una probabilidad levemente más alta de obtener ingresos más altos, de 2,24 puntos porcentuales, si bien es significativo en base al P valor obtenido, en comparacion al estatus matrimonial y el nivel educativo presenta una probabilidad de aumento menor. Lo mismo ocurre para etnia, no ser blanco se asocia con una probabilidad de -2,87 puntos porcentuales en obtener mayores ingresos frente a la gente blanca, con una significancia estadística alta. El sector parece no ser significativo por si solo, no se presentan cambios con significancia estadística.
 
 Ahora calculamos los log odds:
+
 ```{r}
 # Forest plot de Odds Ratios del Modelo 2
 message('Creando forest plot con log odds')
@@ -555,17 +561,13 @@ ggplot(
   )
 
 ```
-Este grafico nos permite aceverar que el sexo si tiene un efecto en la probabilidad de pertenecer al grupo de mayores ingresos, por un 23%. Otros resultados que se destacan: los individuos no blancos presentan odds aproximadamente 18% menores de pertenecer al grupo de ingresos altos que los individuos blancos, y se sostiene la preponderancia de estar casado y tener un mayor nivel educativo en la probabilidad de tener mayores ingresos como fue visto en el dataframe con los efectos marginales promedio. 
+
+Este grafico nos permite aceverar que el sexo si tiene un efecto en la probabilidad de pertenecer al grupo de mayores ingresos, por un 23%. Otros resultados que se destacan: los individuos no blancos presentan odds aproximadamente 18% menores de pertenecer al grupo de ingresos altos que los individuos blancos, y se sostiene la preponderancia de estar casado y tener un mayor nivel educativo en la probabilidad de tener mayores ingresos como fue visto en el dataframe con los efectos marginales promedio.
 
 La interaccion incluida nos permite comprender que la brecha de genero esta fuertemente relacionada con el sector laboral. Los resultados muestran que, manteniendo constantes el resto de las variables incluidas en el modelo, los hombres presentan mayores chances de pertenecer al grupo de ingresos altos respecto de las mujeres (OR = 1,23). Sin embargo, el término de interacción correspondiente a Hombre × Independiente presenta un Odds Ratio menor a uno (OR = 0,57) y resulta estadísticamente significativo, indicando que el efecto positivo asociado al sexo masculino disminuye de manera significativa entre los trabajadores independientes en comparación con quienes se desempeñan en el sector privado, categoría de referencia.
 
+Comparacion de modelos con y sin interaccion:
 
-
-
-
-
-
-Comparacion de modelos con y sin interaccion: 
 ```{r}
 comparacion_modelos <- tibble(
   Modelo = c("Modelo 1", "Modelo 2"),
@@ -581,7 +583,5 @@ comparacion_modelos <- tibble(
 
 comparacion_modelos
 ```
+
 La comparación entre modelos muestra que la incorporación de la interacción entre sexo y tipo de empleo mejora el ajuste del modelo. El Modelo 2 presenta un menor valor de AIC (14124 frente a 14133) y un pseudo-R² ligeramente superior (0.3538 frente a 0.3533). Si bien la mejora en el pseudo-R² es moderada, la reducción del AIC sugiere que la mayor complejidad del modelo se encuentra justificada por una mejor capacidad explicativa. Por este motivo, el Modelo 2 es seleccionado como especificación final para el análisis. Asimismo, uno de los términos de interacción (Hombre × Independiente) resulta estadísticamente significativo, sugiriendo que el efecto del sexo sobre los ingresos varía según el tipo de empleo. En consecuencia, se considera que la inclusión de la interacción aporta información relevante y mejora el desempeño general del modelo, por lo que el Modelo 2 es seleccionado como especificación final.
-
-
-
